@@ -2,6 +2,14 @@
 # profile supplies the `dsh-superagent` entry's stateDir (see docs/006-deployment.md and examples/profile.cordis.patch.yml); the plugin
 # refuses to start without stateDir.
 - insert:
+    - id: dsh-parallel-chat-router-preset
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: dsh-parallel-chat-router
+        name: 并行会话消息理解
+        description: 并行会话内部使用。每条消息独立理解，不执行工具。
+        order: 92
+        plugins: []
     - id: dsh-superagent
       name: dsh-superagent
     - id: dsh-superagent-github

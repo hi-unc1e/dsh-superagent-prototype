@@ -27,8 +27,10 @@ import { settingsView } from './views/settings.ts'
 import { sourcesStatus, type SetupState } from './views/sources.ts'
 import { decisionList, search, threadDetail, threadList } from './views/threads.ts'
 import { executorLoad, ticketDetail, ticketList } from './views/tickets.ts'
+import type { ParallelChat } from './chat.ts'
 
 export interface HttpHost {
+  readonly chat?: ParallelChat
   readonly store: Store
   /** Feishu message links resolved since startup, used by search to match AppLink URLs. */
   readonly sourceLinks: Pick<TextCache, 'entries'>
@@ -153,6 +155,14 @@ function routes(runtime: HttpHost): Routes {
   const ticket = (id: string) => { if (!store.tickets.get(id)) throw new RouteError(404, 'Ticket not found'); return id }
   const promptBody = (input: { body: (maxBytes?: number) => Promise<unknown> }) => input.body(4 * runtime.machine.promptMaxChars.get() + 4096)
   return {
+    'GET chat': () => {
+      if (!runtime.chat) throw new RouteError(404, 'Parallel chat is unavailable')
+      return runtime.chat.view()
+    },
+    'POST chat/messages': async ({ body }) => {
+      if (!runtime.chat) throw new RouteError(404, 'Parallel chat is unavailable')
+      return runtime.chat.submit(await body())
+    },
     'GET state': () => stateView(runtime),
     'GET overview': () => overview(views(runtime), runtime.health, policyVersion(store.settings()),
       executorLoad(store, runtime.executor.activeCount()), runtime.setupProblem ?? runtime.feishuProblem),
