@@ -141,6 +141,7 @@ const TEXT = {
   // Header, search, and tabs
   panel: ['Superagent', 'Superagent'],
   openMaster: ['打开主 Session', 'Open main Session'],
+  openChat: ['并行聊天', 'Parallel chat'],
   pagesLabel: ['dsh-superagent 页面', 'dsh-superagent pages'],
   searchPlaceholder: ['搜索工单、线程、触发或链接', 'Search Tickets, Threads, Triggers or links'],
   searchLabel: ['搜索', 'Search'],
@@ -153,6 +154,7 @@ const TEXT = {
   searchFiltered: ['被来源过滤：{reason}', 'Filtered by its Source: {reason}'],
   searchFoundCapped: ['找到 {tickets} 个工单、{threads} 个线程、前 {items} 条触发（请缩小搜索范围）', 'Found {tickets} Tickets, {threads} Threads and the first {items} Triggers (narrow the search)'],
   inThread: ['在 {thread}', 'in {thread}'],
+  'tab.chat': ['并行聊天', 'Parallel chat'],
   'tab.overview': ['概览', 'Overview'],
   'tab.source': ['来源', 'Source'],
   'tab.trigger': ['触发', 'Trigger'],
