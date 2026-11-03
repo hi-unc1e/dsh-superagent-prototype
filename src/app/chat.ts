@@ -23,7 +23,7 @@ export const ChatInput = z.object({
 const label = (zh: string, en: string) => ({ zh, en })
 interface ChatHost {
   store: Pick<Store, 'get' | 'set' | 'keys' | 'atomic' | 'tickets' | 'triggers' | 'threads' | 'settings'>
-  engine: Pick<Engine, 'receive' | 'decide' | 'attach'>
+  engine: Pick<Engine, 'receive' | 'decide'>
   sources: SourceRegistry
   lifetime: AbortSignal
   configured(): boolean
@@ -151,13 +151,16 @@ export class ParallelChat {
     }
     // Both commands commit in one transaction so the ordinary assessor cannot race this local dispatch.
     this.host.store.atomic(() => {
-      this.host.engine.receive(trigger)
+      if (this.host.engine.receive(trigger) !== 'stored') throw new Error('Chat message was already received')
       let ticketId: string
       if (route.kind === 'followup') {
         const root = this.get(rootId)!
         if (!root.ticketId) throw new Error('The original task is unavailable')
         ticketId = root.ticketId
-        this.host.engine.attach(ticketId, trigger.id)
+        // Intake delivers a person's follow-up on a subscribed thread to its worker. Calling attach here
+        // would try to route a trigger the selected worker already owns.
+        const delivered = this.host.store.triggers.disposition(trigger.id)?.fanout ?? []
+        if (!delivered.includes(ticketId)) throw new Error('The selected task cannot receive this message; create a new task')
       } else {
         const decision = this.host.engine.decide(trigger.id, { kind: 'accept', title: route.title, scope: message.text,
           name: `chat-${message.id.slice(0, 8)}`, reason: { code: 'explicitRouted' } })
