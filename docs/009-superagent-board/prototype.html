@@ -220,6 +220,25 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
   font:10px/1.5 var(--mono);color:var(--muted);
 }
 @keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+/* 状态色：同一种状态在列表、分组、抽屉里始终同一个颜色 */
+:root{--st-decide:#c0362c;--st-running:#1f6fb2;--st-queued:#8a6d1f;--st-done:#6b6b6b}
+.group[data-g="decide"] .gband{border-left:3px solid var(--st-decide);padding-left:9px}
+.group[data-g="running"] .gband{border-left:3px solid var(--st-running);padding-left:9px}
+.group[data-g="queued"] .gband{border-left:3px solid var(--st-queued);padding-left:9px}
+.group[data-g="done"] .gband{border-left:3px solid var(--st-done);padding-left:9px}
+.group[data-g="decide"] .strip{border-left:2px solid var(--st-decide);background:linear-gradient(90deg,#fdf2f0 0%,#fff 42%)}
+.group[data-g="running"] .strip{border-left:2px solid var(--st-running)}
+.group[data-g="queued"] .strip{border-left:2px solid var(--st-queued)}
+.group[data-g="decide"] .count{background:var(--st-decide);color:#fff;border-color:var(--st-decide)}
+.dw-head{border-top:3px solid var(--st,#6b6b6b)}
+.dw-state{font:600 9.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--st);padding:3px 5px;border-radius:2px}
+.sec-first{background:color-mix(in srgb, var(--st) 5%, #fff);border-left:2px solid var(--st)}
+.st-line{margin:2px 0 9px;font:600 11.5px/1.5 var(--mono);color:var(--ink)}
+.st-big{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.st-big i{flex:1;height:4px;background:var(--rule2);display:block;position:relative}
+.st-big i b{position:absolute;inset:0 auto 0 0;background:var(--st);display:block}
+.st-note{margin:0 0 8px;font:10.5px/1.5 var(--mono);color:var(--ink2)}
+
 /* 矮屏时宁可少一条流入，也不要出现半截卡片 */
 @media (max-height:820px){ .inflow:nth-child(3){display:none} .rail-foot{display:none} }
 body.mode-phone .notice{left:auto;right:14px}
@@ -971,6 +990,7 @@ const ICONS = {
 };
 
 const ACTOR = { system: '系统', dsh: 'DSH', codex: 'Codex', henry: 'Henry' };
+const GROUP_LABEL = { decide: '等你判断', running: '正在跑', queued: '排队中', done: '已结束' };
 const PRIO = { 1: 'P1', 2: 'P2', 3: 'P3' };
 
 /* 运行时状态 */
@@ -1155,28 +1175,58 @@ function renderDrawer(isNewTicket) {
   const decided = t.decision ? '<span class="pill">已决定：' + esc(t.decision) + '</span>' : '';
 
   const gate = t.group === 'decide' ? '' : ' disabled title="跑完才可验收"';
-  d.innerHTML =
-    '<div class="dw-head">' +
-      '<div class="dw-top">' +
-        '<span class="dw-id">#' + t.id + '</span>' +
-        '<span class="ex" data-ex="' + t.exec + '">' + t.exec + '</span>' +
-        '<button class="dw-close" type="button" id="dw-close" aria-label="关闭详情抽屉">×</button>' +
-      '</div>' +
-      '<h3 class="dw-title">' + esc(t.title) + '</h3>' +
-      '<div class="dw-tags">' +
-        '<span class="pill hot">' + PRIO[t.prio] + ' · ' + esc(t.kind) + '</span>' +
-        '<span class="pill">' + esc(t.project) + '</span>' +
-        '<span class="pill">执行器 ' + t.exec + '</span>' +
-        '<span class="pill">' + esc(t.status) + '</span>' + decided +
-      '</div>' +
+  const ST = { decide: '#c0362c', running: '#1f6fb2', queued: '#8a6d1f', done: '#6b6b6b' };
+  d.dataset.g = t.group;
+  d.style.setProperty('--st', ST[t.group] || '#6b6b6b');
+
+  const lastEntry = t.timeline[t.timeline.length - 1] || { x: '', s: '' };
+  const decideBtns =
+    '<div class="decide">' +
+      '<button class="btn btn-primary" type="button" data-act="pass" aria-label="通过这个任务"' + gate + '>通过</button>' +
+      '<button class="btn" type="button" data-act="revise" aria-label="要改，写一句修改意见"' + gate + '>要改（写一句）</button>' +
+      '<button class="btn" type="button" data-act="later" aria-label="稍后再看这个任务">稍后</button>' +
+      '<button class="btn" type="button" data-act="call" aria-label="让系统打电话给我">打给我</button>' +
     '</div>' +
-    '<div class="dw-body">' +
+    '<div class="chg' + (S.revising ? ' is-open' : '') + '" id="chg">' +
+      '<textarea id="chg-text" aria-label="写一句要改的内容" placeholder="写一句要改什么，会原样进执行器的下一轮"></textarea>' +
+      '<div class="chg-row"><button class="btn btn-sm" type="button" id="chg-cancel" aria-label="取消写意见">取消</button>' +
+      '<button class="btn btn-sm btn-primary" type="button" id="chg-send" aria-label="把意见发回去">发回去</button></div>' +
+    '</div>';
+
+  // 每张卡打开后的第一屏，按状态给完全不同的东西——这是"不让人搞混"的关键
+  const firstSec =
+    t.group === 'decide'
+      ? '<div class="sec sec-first" data-s="decide">' +
+          '<div class="sec-h"><span class="n">01</span><h4>你的决定</h4><span class="aside">机器不替你选</span></div>' +
+          '<p class="st-line">' + esc(t.status) + '</p>' +
+          decideBtns +
+          '<p class="gate-hint">通过 = 关掉这张票；要改 = 原样写回执行器下一轮。</p>' +
+        '</div>'
+      : t.group === 'running'
+      ? '<div class="sec sec-first" data-s="running">' +
+          '<div class="sec-h"><span class="n">01</span><h4>正在跑</h4><span class="aside">' + esc(t.exec) + ' 进行中</span></div>' +
+          '<div class="st-line">' + esc(t.status) + '</div>' +
+          '<div class="st-big"><i aria-hidden="true"><b style="width:' + (t.progress || 0) + '%"></b></i><span class="mono">' + (t.progress != null ? t.progress + '%' : '—') + '</span></div>' +
+          '<p class="st-note">最近一步：' + esc(lastEntry.x) + (lastEntry.s ? ' · ' + esc(lastEntry.s) : '') + '</p>' +
+          '<p class="gate-hint">跑完才会进「等你判断」；现在不用管它。</p>' +
+        '</div>'
+      : t.group === 'queued'
+      ? '<div class="sec sec-first" data-s="queued">' +
+          '<div class="sec-h"><span class="n">01</span><h4>在等什么</h4><span class="aside">排队不是等 Agent</span></div>' +
+          '<div class="st-line">' + esc(t.status) + '</div>' +
+          '<p class="gate-hint">可以插队、换执行器，或拆成只做首批（首批不排队）。</p>' +
+        '</div>'
+      : '';
+
+  const n = t.group === 'decide' || t.group === 'running' || t.group === 'queued' ? 2 : 1;
+  const timelineSec =
       '<div class="sec">' +
-        '<div class="sec-h"><span class="n">01</span><h4>时间线</h4><span class="aside">触发 → 评估 → 派活 → 执行 → 产物 → 你的决定</span></div>' +
+        '<div class="sec-h"><span class="n">0' + n + '</span><h4>经过</h4><span class="aside">触发 → 评估 → 派活 → 执行 → 产物</span></div>' +
         '<div class="tl" id="tl">' + tl + '</div>' +
-      '</div>' +
+      '</div>';
+  const prodSec =
       '<div class="sec">' +
-        '<div class="sec-h"><span class="n">02</span><h4>产物</h4><span class="aside">分支 / PR / 测试 / 截图</span></div>' +
+        '<div class="sec-h"><span class="n">0' + (n + 1) + '</span><h4>产物</h4><span class="aside">分支 / PR / 测试 / 截图</span></div>' +
         '<div class="prod">' +
           '<div class="prow"><span class="k">分支</span><div class="v">' +
             (t.artifacts.branch.indexOf('—') === 0
@@ -1192,28 +1242,30 @@ function renderDrawer(isNewTicket) {
           '<div class="tests">' + tests + '</div>' +
           '<div class="shots">' + shots + '</div>' +
         '</div>' +
-      '</div>' +
+      '</div>';
+  const fsSec =
       '<div class="fs-wrap">' +
         '<div class="fs-label"><b>飞书卡片</b> · 推到你手机上的样子</div>' +
         feishuHTML(false) +
+      '</div>';
+
+  d.innerHTML =
+    '<div class="dw-head">' +
+      '<div class="dw-top">' +
+        '<span class="dw-id">#' + t.id + '</span>' +
+        '<span class="ex" data-ex="' + t.exec + '">' + t.exec + '</span>' +
+        '<span class="dw-state">' + esc(GROUP_LABEL[t.group] || '') + '</span>' +
+        '<button class="dw-close" type="button" id="dw-close" aria-label="关闭详情抽屉">×</button>' +
+      '</div>' +
+      '<h3 class="dw-title">' + esc(t.title) + '</h3>' +
+      '<div class="dw-tags">' +
+        '<span class="pill hot">' + PRIO[t.prio] + ' · ' + esc(t.kind) + '</span>' +
+        '<span class="pill">' + esc(t.project) + '</span>' +
+        '<span class="pill">执行器 ' + t.exec + '</span>' + decided +
       '</div>' +
     '</div>' +
-    '<div class="dw-foot">' +
-      '<div class="foot-h"><span class="n">03</span><b>你的决定</b><span style="margin-left:auto;font-size:10px;color:var(--muted)">机器不替你选</span></div>' +
-      '<div class="decide">' +
-        '<button class="btn btn-primary" type="button" data-act="pass" aria-label="通过这个任务"' + gate + '>通过</button>' +
-        '<button class="btn" type="button" data-act="revise" aria-label="要改，写一句修改意见"' + gate + '>要改（写一句）</button>' +
-        '<button class="btn" type="button" data-act="later" aria-label="稍后再看这个任务">稍后</button>' +
-        '<button class="btn" type="button" data-act="call" aria-label="让系统打电话给我">打给我</button>' +
-      '</div>' +
-      (gate ? '<p class="gate-hint">跑完才可验收；现在只能催一下或打给我。</p>' : '') +
-      '<div class="chg' + (S.revising ? ' is-open' : '') + '" id="chg">' +
-        '<textarea id="chg-text" aria-label="写一句要改的内容" placeholder="写一句要改什么，会原样进执行器的下一轮"></textarea>' +
-        '<div class="chg-row"><button class="btn btn-sm" type="button" id="chg-cancel" aria-label="取消写意见">取消</button>' +
-        '<button class="btn btn-sm btn-primary" type="button" id="chg-send" aria-label="把意见发回去">发回去</button></div>' +
-      '</div>' +
-      '<p class="prov">' + esc(t.prov) + '</p>' +
-    '</div>';
+    '<div class="dw-body">' + firstSec + timelineSec + prodSec + fsSec + '</div>' +
+    '<div class="dw-foot"><p class="prov">' + esc(t.prov) + '</p></div>';
 
   if (isNewTicket) {
     const fs = $('.fs-wrap');
