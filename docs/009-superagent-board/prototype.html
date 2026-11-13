@@ -733,7 +733,7 @@ const DATA = {
   groups: [
     { key: 'decide',  en: 'DECIDE',  name: '等你判断',        hot: true, sub: '最老的已等你 2 小时' },
     { key: 'running', en: 'RUNNING', name: '正在跑',          hot: false, sub: '槽位 2/4 · Codex 排队 2' },
-    { key: 'queued',  en: 'QUEUED',  name: '排队中',          hot: false, sub: '等槽位或等上游' },
+    { key: 'queued',  en: 'QUEUED',  name: '排队中',          hot: false, sub: '等共享资源，不是等 Agent' },
     { key: 'done',    en: 'CLOSED',  name: '已结束（近 24h）', hot: false, sub: '你点过通过 / 打回' }
   ],
 
@@ -852,11 +852,12 @@ const DATA = {
     },
     {
       id: 'T-2480', title: '安卓 3.1 发版检查单（12 项）', project: 'HaloCam', prio: 2, exec: 'DSH',
-      group: 'queued', m: 8, kind: 'chore', status: '排队 · 等 DSH 槽位（前面 1 个）',
+      group: 'queued', m: 8, kind: 'chore', status: '排队 · 等 build:parity31（#T-2477 占 4 分钟）',
       timeline: [
         { m: 16, a: 'system', x: '触发：定时器 每日 09:00 生成检查单', s: '模板 12 项，不需要你写' },
         { m: 15, a: 'system', x: '评估：chore · P2 · HaloCam', s: '发版前必跑' },
-        { m: 8,  a: 'system', x: '排队：等 DSH 槽位', s: '前面 1 个任务，预计 6 分钟' }
+        { m: 12, a: 'system', x: '首批并行完成：定位 3 个可疑文件，方案已出', s: '不占 build、不占设备，所以没排队' },
+        { m: 8,  a: 'system', x: '落地排队：等 build:parity31/app/build', s: '#T-2477 占着 4 分钟，约 3 分钟后轮到' }
       ],
       artifacts: {
         branch: '—（尚未开跑）', pr: '—',
@@ -867,11 +868,11 @@ const DATA = {
     },
     {
       id: 'T-2474', title: 'arXiv 摘要 pipeline 去重', project: '研究', prio: 3, exec: 'Codex',
-      group: 'queued', m: 41, kind: 'task', status: '排队 · 等 Codex 槽位（2 个在前面）',
+      group: 'queued', m: 41, kind: 'task', status: '排队 · 等 Codex 配额（2/2）· 可换 DSH 立跑',
       timeline: [
         { m: 60, a: 'system', x: '触发：DSH 会话', s: '「每天推的论文有重复」' },
         { m: 58, a: 'system', x: '评估：task · P3 · 研究', s: '不紧急' },
-        { m: 41, a: 'system', x: '排队：等 Codex 槽位', s: '并发上限 2，当前 2/2' }
+        { m: 41, a: 'system', x: '排队：Codex 配额已满', s: 'DSH 通道空闲，换执行器可立即开跑' }
       ],
       artifacts: {
         branch: '—（尚未开跑）', pr: '—',
