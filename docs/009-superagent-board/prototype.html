@@ -21,10 +21,10 @@
   --muted:#6C726A;
   --rule:#D2D5C8;
   --rule2:#E3E5DA;
-  --signal:#AF3927;       /* 唯一强调色：等你判断 / 主按钮 */
+  --signal:#AF3927;       /* 状态色：只标「等你判断」，不做按钮 */
   --signal-deep:#8B2A1B;
   --signal-wash:#F3E0DA;
-  --live:#2C5A4F;         /* 运行中 / 通过 */
+  --live:#2C5A4F;         /* 动作色 / 运行中 / 通过：主按钮与飞书卡片一致 */
   --live-wash:#DDE8E1;
   --sans:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -81,8 +81,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .btn-play .play-ico{display:inline-flex;width:9px;height:11px;flex:none}
 .btn-play .play-ico svg{width:9px;height:11px;fill:currentColor}
 .btn-sm{padding:4px 8px;font-size:11px}
-.btn-primary{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:600}
-.btn-primary:hover{background:var(--signal-deep);border-color:var(--signal-deep);color:#fff}
+.btn-primary{background:var(--live);border-color:var(--live);color:#fff;font-weight:600}
+.btn-primary:hover{background:#22443C;border-color:#22443C;color:#fff}
 .btn-ghost{background:transparent}
 .btn-ghost:hover{background:var(--panel)}
 
@@ -243,7 +243,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 @media (max-height:820px){ .inflow:nth-child(3){display:none} .rail-foot{display:none} }
 body.mode-phone .notice{left:auto;right:14px}
 
-.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn[disabled]{opacity:.4;cursor:not-allowed;background:transparent;color:var(--muted);border-color:var(--rule)}
 .gate-hint{margin:6px 0 0;font:10px/1.4 var(--mono);color:var(--muted)}
 
 /* 中栏：任务队列 */
